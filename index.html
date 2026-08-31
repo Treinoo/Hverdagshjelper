@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#f7f2ea"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<title>Matvenn</title>
+<style>
+:root{--bg:#f7f2ea;--card:#fffdf9;--ink:#2f322f;--muted:#777d76;--accent:#6f8f72;--accent2:#dbe7d8;--line:#e9e2d8;--soft:#f4efe7;--shadow:0 8px 24px rgba(60,50,40,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif}
+.app{max-width:620px;margin:auto;padding:16px 16px 96px}h1{font-size:29px;margin:4px 0}.sub{color:var(--muted);margin:0 0 14px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 18px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:10}
+.tab{border:0;border-radius:16px;padding:12px 14px;font-weight:800;background:#ebe5dc;color:#5d625c}.tab.active{background:var(--accent);color:white}
+.panel{display:none}.panel.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.btn{border:0;border-radius:15px;padding:13px 15px;font-size:15px;font-weight:750;background:var(--accent);color:#fff;cursor:pointer}.btn.secondary{background:var(--accent2);color:var(--ink)}.btn.ghost{background:#f1ece4;color:var(--ink)}
+.input-row{display:flex;gap:8px}input{min-width:0;flex:1;border:1px solid var(--line);border-radius:14px;padding:13px;font-size:16px}.voice{width:52px;font-size:20px;padding:0}
+.note{font-size:13px;color:var(--muted);line-height:1.42;margin-top:6px}.mic-help{background:var(--soft);border-radius:14px;padding:11px 12px;margin-top:10px}
+.item{display:flex;align-items:center;gap:10px;padding:12px 3px;border-bottom:1px solid var(--line)}.check{width:27px;height:27px;border:2px solid var(--accent);border-radius:9px;display:grid;place-items:center;flex:none}.checked .check{background:var(--accent);color:white}.checked .label{text-decoration:line-through;color:var(--muted)}.label{flex:1;font-size:17px}.delete{border:0;background:none;color:var(--muted);font-size:22px}
+.shopping-count{font-size:28px;font-weight:900}.category{margin-top:14px}.category h3{font-size:15px;margin:0 0 4px}
+.pill{display:inline-block;background:#eef3ea;border-radius:999px;padding:7px 10px;font-size:13px;margin:4px 4px 0 0;cursor:pointer}.pill.add::before{content:"+ ";font-weight:800}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#30332f;color:white;padding:10px 14px;border-radius:999px;opacity:0;transition:.2s;pointer-events:none;font-size:13px;max-width:90%;text-align:center}.toast.show{opacity:1}
+.status{margin-top:10px;padding:10px 12px;border-radius:13px;background:#edf4eb;font-size:13px}.status.warn{background:#fff0c9}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>Matvenn 🥕</h1>
+<p class="sub">Mindre husking. Mindre skriving. Mer ferdig.</p>
+
+<div class="tabs">
+<button id="tabHome" class="tab active" onclick="showTab('home')">🏠 Mat & uke</button>
+<button id="tabShop" class="tab" onclick="showTab('shop')">🛒 Handleliste <span id="tabCount"></span></button>
+</div>
+
+<section id="home" class="panel active">
+<div class="card">
+<strong>✨ Webapp-klar versjon</strong>
+<div class="note">Denne versjonen er laget for å ligge på en https-adresse og kan installeres på hjemskjermen.</div>
+<div id="installStatus" class="status">Sjekker appstatus…</div>
+</div>
+
+<div class="card">
+<strong>🥪 Faste varer</strong>
+<div class="note">Trykk for å legge til.</div>
+<div>
+<span class="pill add" onclick="addQuick('Agurk')">Agurk</span>
+<span class="pill add" onclick="addQuick('Tomat')">Tomat</span>
+<span class="pill add" onclick="addQuick('Epler')">Epler</span>
+<span class="pill add" onclick="addQuick('Salami')">Salami</span>
+<span class="pill add" onclick="addQuick('Brød')">Brød</span>
+<span class="pill add" onclick="addQuick('Melk')">Melk</span>
+</div>
+</div>
+</section>
+
+<section id="shop" class="panel">
+<div class="shopping-count" id="count">0 varer</div>
+<div class="card">
+<div class="input-row">
+<input id="itemInput" placeholder="Skriv eller snakk…" onkeydown="if(event.key==='Enter')addItem()"/>
+<button id="voiceBtn" class="btn secondary voice" onclick="startVoice()">🎤</button>
+<button class="btn" onclick="addItem()">+</button>
+</div>
+<div id="voiceHelp" class="mic-help note">Trykk 🎤 og si f.eks. «melk, brød, epler og dopapir».</div>
+<div id="permissionStatus" class="status">Mikrofonstatus: ikke testet.</div>
+<div id="shoppingList"></div>
+</div>
+</section>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let shopping=JSON.parse(localStorage.getItem("matvenn-pwa-shopping")||"[]");
+
+function showTab(name){
+ document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+ document.getElementById(name).classList.add("active");
+ document.getElementById(name==="home"?"tabHome":"tabShop").classList.add("active");
+}
+function save(){localStorage.setItem("matvenn-pwa-shopping",JSON.stringify(shopping))}
+function normalize(s){return s.trim().replace(/\s+/g," ").replace(/^./,c=>c.toUpperCase())}
+function addQuick(v){
+ v=normalize(v); if(!v)return;
+ if(!shopping.some(x=>x.name.toLowerCase()===v.toLowerCase()&&!x.done)) shopping.unshift({name:v,done:false});
+ save();renderShopping();toast(v+" lagt til");
+}
+function addItem(){const i=document.getElementById("itemInput");addQuick(i.value);i.value=""}
+function renderShopping(){
+ const root=document.getElementById("shoppingList");root.innerHTML="";
+ shopping.forEach((x,i)=>{
+  const row=document.createElement("div");row.className="item"+(x.done?" checked":"");
+  row.innerHTML=`<div class="check" onclick="toggleItem(${i})">${x.done?"✓":""}</div><div class="label">${x.name}</div><button class="delete" onclick="removeItem(${i})">×</button>`;
+  root.appendChild(row)
+ });
+ const active=shopping.filter(x=>!x.done).length;
+ document.getElementById("count").textContent=active+" varer";
+ document.getElementById("tabCount").textContent=active?`(${active})`:"";
+}
+function toggleItem(i){shopping[i].done=!shopping[i].done;save();renderShopping()}
+function removeItem(i){shopping.splice(i,1);save();renderShopping()}
+
+async function ensureMicrophonePermission(){
+ const status=document.getElementById("permissionStatus");
+ if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+  status.textContent="Mikrofonstatus: nettleseren støtter ikke direkte mikrofontilgang.";
+  status.classList.add("warn");
+  return false;
+ }
+ try{
+   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+   stream.getTracks().forEach(t=>t.stop());
+   status.textContent="Mikrofonstatus: tilgang gitt ✅";
+   status.classList.remove("warn");
+   return true;
+ }catch(e){
+   status.textContent="Mikrofonstatus: tilgang ble blokkert. Gi Matvenn mikrofontilgang i nettleseren.";
+   status.classList.add("warn");
+   return false;
+ }
+}
+
+async function startVoice(){
+ const help=document.getElementById("voiceHelp");
+ const ok=await ensureMicrophonePermission();
+ if(!ok){
+  document.getElementById("itemInput").focus();
+  return;
+ }
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){
+  help.innerHTML="Mikrofonen virker, men denne nettleseren har ikke innebygd tale-til-tekst. Bruk mikrofonen på mobilens tastatur i feltet.";
+  document.getElementById("itemInput").focus();
+  return;
+ }
+ const r=new SR();
+ r.lang="nb-NO"; r.interimResults=false; r.maxAlternatives=1;
+ help.textContent="Lytter…";
+ r.onresult=e=>{
+   const text=e.results[0][0].transcript;
+   const parts=text.split(/,| og | samt /i).map(x=>x.trim()).filter(Boolean);
+   parts.forEach(addQuick);
+   help.textContent=`Jeg hørte: «${text}»`;
+ };
+ r.onerror=e=>{
+   help.textContent="Jeg fikk ikke tolket talen. Prøv igjen, eller bruk mikrofonen på tastaturet.";
+ };
+ r.start();
+}
+
+function toast(msg){
+ const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+ clearTimeout(window.__t);window.__t=setTimeout(()=>t.classList.remove("show"),1400)
+}
+
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}))
+}
+document.getElementById("installStatus").textContent =
+ location.protocol==="https:" ? "Kjører sikkert over https ✅ Mikrofon kan tillates." :
+ "Denne kopien kjører ikke over https ennå. Mikrofonknappen vil fungere best etter publisering.";
+renderShopping();
+</script>
+</body>
+</html>

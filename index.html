@@ -35,8 +35,27 @@
 </style>
 </head>
 <body>
+
+<script>
+(async function clearOldMatvennCache(){
+  try{
+    if("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const reg of regs){ await reg.unregister(); }
+    }
+    if("caches" in window){
+      const keys = await caches.keys();
+      for(const key of keys){ await caches.delete(key); }
+    }
+    console.log("Matvenn v7: gammel cache/service worker fjernet");
+  }catch(e){
+    console.log("Cache cleanup:", e);
+  }
+})();
+</script>
+
 <div class="app">
-<h1>Matvenn 🥕</h1><p class="sub">Mindre husking. Mindre skriving. Mer ferdig.</p>
+<h1>Matvenn 🥕</h1><p class="sub">Mindre husking. Mindre skriving. Mer ferdig.</p><div style="display:inline-block;margin:0 0 12px;padding:6px 10px;border-radius:999px;background:#fff0c9;font-size:12px;font-weight:800">NETTEST v7</div>
 
 <div class="tabs">
 <button id="tabHome" class="tab active" onclick="showTab('home')">🏠 Mat & uke</button>
@@ -91,7 +110,7 @@
 <div class="shopping-head"><div><div class="note">Sortert etter avdeling</div><div class="shopping-count" id="count">0 varer</div></div><button class="btn ghost small" onclick="clearDone()">Fjern handlet</button></div>
 <div class="card">
 <div class="input-row"><input id="itemInput" placeholder="Skriv vare…" onkeydown="if(event.key==='Enter')addItem()"/><button id="voiceBtn" class="btn secondary voice" onclick="toggleVoice()">🎤</button><button class="btn small" onclick="addItem()">+</button></div>
-<div id="voiceHelp" class="mic-help note">Trykk 🎤 én gang og si flere varer. Trykk ⏹ når du er ferdig.</div>
+<div id="voiceHelp" class="mic-help note">Trykk 🎤 én gang. Si flere varer etter hverandre. Trykk ⏹ når du er ferdig.</div>
 <div id="shoppingList"></div>
 </div>
 </section>
@@ -199,14 +218,16 @@ function openHaveCheck(r){pendingRecipe=r;const list=document.getElementById("ha
 function closeModal(){document.getElementById("haveModal").classList.remove("show");pendingRecipe=null}
 function confirmRecipeAdd(){if(!pendingRecipe)return;document.querySelectorAll("#haveList input").forEach(cb=>{if(!cb.checked)addQuick(cb.dataset.item,1,true)});closeModal();toast("Det du mangler er lagt til")}
 function renderAllPills(){renderPills("staples",staples,"addQuick");renderPills("household",household,"addQuick")}
+
 let voiceRecognition = null;
 let voiceListening = false;
 
-function splitSpokenItems(text){
+function parseSpokenItems(text){
+  // Natural Norwegian separators.
   return text
     .replace(/og så/gi, ",")
-    .replace(/også/gi, ",")
     .replace(/samt/gi, ",")
+    .replace(/pluss/gi, ",")
     .replace(/og/gi, ",")
     .split(",")
     .map(x => x.trim())
@@ -224,36 +245,31 @@ async function toggleVoice(){
       try{ voiceRecognition.stop(); }catch(e){}
     }
     btn.textContent = "🎤";
-    help.textContent = "Stoppet. Trykk 🎤 når du vil legge til flere varer.";
+    help.textContent = "Ferdig. Trykk 🎤 når du vil legge til flere varer.";
     return;
   }
 
   if(!SR){
-    help.innerHTML = "Denne nettleseren har ikke innebygd tale-til-tekst. Bruk mikrofonen på mobilens tastatur.";
+    help.innerHTML = "Denne nettleseren støtter ikke direkte talegjenkjenning. På mobil kan du bruke mikrofonen på tastaturet og diktere hele listen i skrivefeltet.";
     document.getElementById("itemInput").focus();
     return;
   }
 
-  if(location.protocol === "file:"){
-    help.innerHTML = "Åpne den publiserte HTTPS-versjonen for å bruke mikrofonen.";
-    return;
-  }
-
-  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-    try{
+  try{
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
       const stream = await navigator.mediaDevices.getUserMedia({audio:true});
       stream.getTracks().forEach(t => t.stop());
-    }catch(e){
-      help.innerHTML = "Mikrofontilgang er blokkert. Tillat mikrofon for Matvenn i nettleseren.";
-      return;
     }
+  }catch(e){
+    help.innerHTML = "Mikrofontilgang er blokkert. Tillat mikrofon for denne siden i nettleseren.";
+    return;
   }
 
   voiceListening = true;
   btn.textContent = "⏹";
-  help.textContent = "Lytter… si flere varer etter hverandre. Du kan ta små pauser.";
+  help.textContent = "Lytter … si for eksempel: «melk, brød, epler og dopapir». Du kan fortsette å snakke til du trykker stopp.";
 
-  const startRecognition = () => {
+  const startOneSession = () => {
     if(!voiceListening) return;
 
     const r = new SR();
@@ -263,59 +279,56 @@ async function toggleVoice(){
     r.continuous = true;
     r.maxAlternatives = 1;
 
-    r.onresult = e => {
-      let fullText = "";
-      for(let i=e.resultIndex; i<e.results.length; i++){
-        if(e.results[i].isFinal){
-          fullText += " " + e.results[i][0].transcript;
+    r.onresult = (event) => {
+      let said = [];
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(event.results[i].isFinal){
+          const text = event.results[i][0].transcript.trim();
+          if(text){
+            const items = parseSpokenItems(text);
+            items.forEach(x => addQuick(x, 1, true));
+            said.push(...items);
+          }
         }
       }
-      fullText = fullText.trim();
-      if(!fullText) return;
-
-      const parts = splitSpokenItems(fullText);
-      parts.forEach(x => addQuick(x, 1, true));
-      save();
-      renderShopping();
-      help.textContent = `La til: ${parts.join(", ")}. Fortsett å snakke, eller trykk ⏹ når du er ferdig.`;
+      if(said.length){
+        save();
+        renderShopping();
+        help.textContent = "La til: " + said.join(", ") + ". Fortsett å snakke, eller trykk ⏹.";
+      }
     };
 
-    r.onerror = e => {
-      if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+    r.onerror = (event) => {
+      if(event.error === "not-allowed" || event.error === "service-not-allowed"){
         voiceListening = false;
         btn.textContent = "🎤";
         help.textContent = "Mikrofontilgang ble blokkert.";
-        return;
       }
     };
 
     r.onend = () => {
+      // Chrome often stops after silence. Restart while the stop button is active.
       if(voiceListening){
-        // Some mobile browsers stop listening after a pause.
-        // Restart automatically so the user does not have to press the mic again.
-        setTimeout(startRecognition, 250);
+        setTimeout(startOneSession, 300);
       }else{
         btn.textContent = "🎤";
       }
     };
 
-    try{ r.start(); }
-    catch(e){
-      setTimeout(startRecognition, 500);
+    try{
+      r.start();
+    }catch(e){
+      if(voiceListening) setTimeout(startOneSession, 500);
     }
   };
 
-  startRecognition();
+  startOneSession();
 }
 
 function renderWednesday(){if(new Date().getDay()===3)document.getElementById("wedBanner").classList.remove("hidden")}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>t.classList.remove("show"),1600)}
 renderShopping();renderAllPills();renderLearned();renderUseUp();renderKids();renderMealHistory();renderWednesday();
 </script>
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
-}
-</script>
+
 </body>
 </html>

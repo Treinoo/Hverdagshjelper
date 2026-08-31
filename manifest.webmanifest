@@ -2,6 +2,7 @@
   "name": "Matvenn",
   "short_name": "Matvenn",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f7f2ea",
   "theme_color": "#f7f2ea",

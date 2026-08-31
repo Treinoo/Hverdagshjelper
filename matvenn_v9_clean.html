@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7f2ea">
+<title>Matvenn v9</title>
+<style>
+:root{
+  --bg:#f7f2ea; --card:#fffdf9; --ink:#2f322f; --muted:#757b74;
+  --accent:#76917a; --accent-soft:#dfe9dc; --line:#e7e0d6;
+  --chip:#eef3ea; --warn:#fff1cc; --shadow:0 8px 24px rgba(60,50,40,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{width:100%;max-width:620px;margin:0 auto;padding:16px 14px 90px}
+h1{font-size:29px;margin:4px 0 2px}
+.sub{color:var(--muted);margin:0 0 8px}
+.version{display:inline-block;background:var(--warn);padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:12px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:20}
+.tab{border:0;border-radius:15px;padding:12px;background:#ece6dd;font-weight:800;color:#59605a}
+.tab.active{background:var(--accent);color:#fff}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:15px;box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.hero-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:14px;padding:12px 14px;background:var(--accent);color:#fff;font-weight:800}
+.btn.secondary{background:var(--accent-soft);color:var(--ink)}
+.btn.ghost{background:#f2ede6;color:var(--ink)}
+.btn.small{padding:8px 10px;font-size:13px}
+.input{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:#fff;color:var(--ink)}
+.input-row{display:grid;grid-template-columns:minmax(0,1fr) 48px 44px;gap:8px}
+.mic{padding:0;font-size:20px}
+.note{font-size:13px;line-height:1.45;color:var(--muted);margin-top:6px}
+.section-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:20px 2px 8px}
+.section-title h2{font-size:19px;margin:0}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pill{background:var(--chip);border-radius:999px;padding:7px 10px;font-size:13px;display:inline-flex;align-items:center;gap:4px}
+.meal{padding:13px 0;border-bottom:1px solid var(--line)}
+.meal:last-child{border-bottom:0}
+.meal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.meal-name{font-weight:850;font-size:17px}
+.tag{background:#f1ece4;border-radius:999px;padding:5px 8px;font-size:12px;color:#666;white-space:nowrap}
+.source{font-size:12px;color:#66736a;margin-top:4px}
+.recipebox{background:#f8f4ee;border-radius:14px;padding:11px 12px;margin-top:10px}
+.recipebox h4{margin:0 0 6px;font-size:14px}
+.recipebox ol{margin:0;padding-left:18px}
+.recipebox li{font-size:13px;margin:3px 0;line-height:1.35}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.hidden{display:none!important}
+.shopping-count{font-size:28px;font-weight:900}
+.category{margin-top:16px}
+.category h3{font-size:15px;margin:0 0 3px}
+.item{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.check{width:27px;height:27px;border:2px solid var(--accent);border-radius:9px;display:grid;place-items:center;flex:0 0 auto}
+.checked .check{background:var(--accent);color:#fff}
+.checked .label{text-decoration:line-through;color:var(--muted)}
+.label{flex:1;min-width:0;font-size:16px;word-break:break-word}
+.delete{border:0;background:transparent;color:#888;font-size:22px;padding:2px 5px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.modal.show{display:flex}
+.sheet{width:100%;max-width:620px;max-height:80vh;overflow:auto;background:var(--card);border-radius:24px 24px 0 0;padding:18px}
+.homecheck{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.homecheck input{width:20px;height:20px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#30332f;color:#fff;padding:10px 14px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:200;max-width:90%;text-align:center;font-size:13px}
+.toast.show{opacity:1}
+@media (max-width:420px){
+  .app{padding-left:10px;padding-right:10px}
+  .meal-top{flex-direction:column}
+  .tag{white-space:normal}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Matvenn 🥕</h1>
+  <p class="sub">Mindre husking. Mindre skriving. Mer ferdig.</p>
+  <div class="version">NETTEST v9</div>
+
+  <div class="tabs">
+    <button id="tabHome" class="tab active" onclick="showTab('home')">🏠 Mat & uke</button>
+    <button id="tabShop" class="tab" onclick="showTab('shop')">🛒 Handleliste <span id="tabCount"></span></button>
+  </div>
+
+  <section id="home" class="panel active">
+    <div class="card">
+      <strong>✨ Ordne uka for meg</strong>
+      <div class="note">Pizza, taco og rester er faste. Matvenn finner fire oppskrifter i tillegg.</div>
+      <div class="hero-row">
+        <select id="kidsDays" class="input" style="max-width:210px">
+          <option value="0">0 barnevennlige dager</option>
+          <option value="1">1 barnevennlig dag</option>
+          <option value="2" selected>2 barnevennlige dager</option>
+          <option value="3">3 barnevennlige dager</option>
+          <option value="4">4 barnevennlige dager</option>
+        </select>
+        <button class="btn" onclick="makeWeek()">Lag ukeplan</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>😵 Jeg orker ikke tenke</strong>
+      <div class="note">Ett konkret middagstips med oppskrift og kilde.</div>
+      <button class="btn secondary" style="margin-top:10px" onclick="dontThink()">Velg for meg</button>
+    </div>
+
+    <div class="card">
+      <strong>⚡ Kjappe middager</strong>
+      <div class="note">Tre raske oppskrifter når du bare vil ha noe enkelt.</div>
+      <button class="btn ghost" style="margin-top:10px" onclick="showQuickMeals()">Vis kjappe forslag</button>
+    </div>
+
+    <div id="suggestionCard" class="card hidden"></div>
+
+    <div class="section-title"><h2>🥕 Bruk opp først</h2></div>
+    <div class="card">
+      <div class="note">Skriv inn ting du vil bruke opp. Matvenn prioriterer oppskrifter som bruker dem.</div>
+      <div class="hero-row">
+        <input id="useUpInput" class="input" style="flex:1" placeholder="F.eks. kylling, paprika" onkeydown="if(event.key==='Enter') addUseUp()">
+        <button class="btn small" onclick="addUseUp()">Legg til</button>
+      </div>
+      <div id="useUpPills" class="pills"></div>
+    </div>
+
+    <div class="section-title">
+      <h2>🍽️ Ukesmeny</h2>
+      <button class="btn ghost small" onclick="makeWeek()">Nye forslag</button>
+    </div>
+    <div id="week" class="card">
+      <div class="pills">
+        <span class="pill">🍕 Pizza</span>
+        <span class="pill">🌮 Taco</span>
+        <span class="pill">🥡 Rester</span>
+      </div>
+      <div class="note">Trykk «Lag ukeplan» for fire oppskrifter til.</div>
+    </div>
+
+    <div class="section-title"><h2>❤️ Middagshistorikk</h2></div>
+    <div class="card"><div id="mealHistory" class="note">Ingen middager vurdert ennå.</div></div>
+  </section>
+
+  <section id="shop" class="panel">
+    <div class="section-title">
+      <div>
+        <div class="note">Sortert etter avdeling</div>
+        <div id="count" class="shopping-count">0 varer</div>
+      </div>
+      <button class="btn ghost small" onclick="clearDone()">Fjern handlet</button>
+    </div>
+
+    <div class="card">
+      <div class="input-row">
+        <input id="itemInput" class="input" placeholder="Skriv eller snakk…" onkeydown="if(event.key==='Enter') addItem()">
+        <button id="voiceBtn" class="btn secondary mic" onclick="toggleVoice()">🎤</button>
+        <button class="btn" onclick="addItem()">+</button>
+      </div>
+      <div id="voiceHelp" class="note">Trykk 🎤 én gang. Si flere varer. Trykk ⏹ når du er ferdig.</div>
+      <div id="shoppingList"></div>
+    </div>
+
+    <div id="frequentBox" class="card hidden">
+      <strong>🔁 Ofte kjøpt</strong>
+      <div class="note">Matvenn lærer av det du faktisk krysser av som handlet.</div>
+      <div id="learnedSuggestions" class="pills"></div>
+    </div>
+  </section>
+</div>
+
+<div id="haveModal" class="modal" onclick="if(event.target===this) closeModal()">
+  <div class="sheet">
+    <h3 style="margin-top:0">Har du noe av dette hjemme?</h3>
+    <div class="note">Kryss av det du allerede har. Resten går på handlelisten.</div>
+    <div id="haveList"></div>
+    <div class="actions">
+      <button class="btn" onclick="confirmRecipeAdd()">Legg til det jeg mangler</button>
+      <button class="btn ghost" onclick="closeModal()">Avbryt</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const recipes = [
+  {
+    name:"Kjøttkaker med kålstuing", tag:"Tradisjonell", source:"MatPrat",
+    url:"https://www.matprat.no/oppskrifter/tradisjon/kjottkaker/",
+    time:"40–60 min", difficulty:"Middels", kids:true, quick:false, style:"traditional",
+    items:["Kjøttdeig","Poteter","Hodekål","Melk","Smør","Hvetemel","Kjøttkraft","Tyttebær","Potetmel"],
+    steps:["Lag kjøttfarse og form kjøttkaker.","Brun kjøttkakene og la dem trekke ferdig i saus.","Kok poteter og lag kålstuing.","Server med tyttebær."]
+  },
+  {
+    name:"Brun lapskaus", tag:"Tradisjonell", source:"MatPrat",
+    url:"https://www.matprat.no/oppskrifter/tradisjon/lapskaus/",
+    time:"60+ min", difficulty:"Enkel", kids:true, quick:false, style:"traditional",
+    items:["Høyrygg","Poteter","Gulrot","Kålrot","Persillerot","Purre","Kjøttbuljong","Smør"],
+    steps:["Brun kjøttet.","La kjøttet koke mørt i kraft.","Tilsett poteter og grønnsaker.","Kok videre til alt er mørt."]
+  },
+  {
+    name:"Fiskegrateng med makaroni", tag:"Familiefavoritt", source:"MatPrat",
+    url:"https://www.matprat.no/oppskrifter/familien/fiskegrateng/",
+    time:"40–60 min", difficulty:"Middels", kids:true, quick:false, style:"safe",
+    items:["Hvit fisk","Makaroni","Melk","Egg","Smør","Hvetemel","Purre","Hvitost","Griljermel"],
+    steps:["Kok makaroni og gjør klar fisken.","Lag hvit saus.","Bland inn fisk, makaroni og egg.","Topp og stek gyllen."]
+  },
+  {
+    name:"Pannekaker", tag:"Kjapp klassiker", source:"MatPrat",
+    url:"https://www.matprat.no/oppskrifter/familien/pannekaker/",
+    time:"40–60 min", difficulty:"Middels", kids:true, quick:true, style:"safe",
+    items:["Hvetemel","Salt","Melk","Egg","Smør"],
+    steps:["Bland mel og salt.","Visp inn melk.","Rør inn egg.","Stek tynne pannekaker."]
+  },
+  {
+    name:"Omelett med ost og løk", tag:"Superenkel", source:"MatPrat",
+    url:"https://www.matprat.no/oppskrifter/rask/omelett-med-ost-og-lok/",
+    time:"Under 20 min", difficulty:"Superenkel", kids:true, quick:true, style:"safe",
+    items:["Egg","Løk","Hvitost","Cherrytomater","Smør"],
+    steps:["Visp egg.","Hell i varm panne.","Legg på ost og løk.","Brett omeletten og server."]
+  },
+  {
+    name:"Enkel butter chicken", tag:"Indisk", source:"MENY",
+    url:"https://meny.no/oppskrifter/gryte/enkel-butter-chicken",
+    time:"20 min", difficulty:"Enkel", kids:false, quick:true, style:"creative",
+    items:["Kylling","Butter chicken-base","Ris","Naan","Koriander"],
+    steps:["Stek kyllingen.","Tilsett saus og la småkoke.","Tilbered ris og naan.","Server med koriander."]
+  },
+  {
+    name:"Kyllingwok med nudler", tag:"Asiatisk", source:"MENY",
+    url:"https://meny.no/oppskrifter/wok/kylling-med-nudler",
+    time:"20 min", difficulty:"Enkel", kids:false, quick:true, style:"creative",
+    items:["Kylling","Nudler","Wokgrønnsaker","Sweet chilisaus","Rapsolje"],
+    steps:["Stek kyllingen.","Kok nudlene.","Wok grønnsakene.","Bland alt med saus."]
+  }
+];
+
+const categories = {
+  "Frukt & grønt":["agurk","tomat","eple","paprika","brokkoli","gulrot","kål","persillerot","purre","løk","koriander"],
+  "Kjøl":["melk","ost","egg","smør","yoghurt","crème fraîche","salami"],
+  "Kjøtt & fisk":["kylling","kjøttdeig","høyrygg","laks","fisk","pølser"],
+  "Tørrvarer":["pasta","ris","nudler","makaroni","naan","tortilla","hvetemel","potetmel","griljermel","buljong","tyttebær","sweet chili","salt"],
+  "Husholdning":["toalettpapir","dopapir","kjøkkenpapir","vaskemiddel","oppvasktabletter","tannkrem","sjampo","shampoo","zalo"]
+};
+
+let shopping = JSON.parse(localStorage.getItem("matvenn9-shopping") || "[]");
+let purchases = JSON.parse(localStorage.getItem("matvenn9-purchases") || "{}");
+let ratings = JSON.parse(localStorage.getItem("matvenn9-ratings") || "{}");
+let useUp = JSON.parse(localStorage.getItem("matvenn9-useup") || "[]");
+let pendingRecipe = null;
+let voiceRecognition = null;
+let voiceListening = false;
+
+function save(){
+  localStorage.setItem("matvenn9-shopping", JSON.stringify(shopping));
+  localStorage.setItem("matvenn9-purchases", JSON.stringify(purchases));
+  localStorage.setItem("matvenn9-ratings", JSON.stringify(ratings));
+  localStorage.setItem("matvenn9-useup", JSON.stringify(useUp));
+}
+function showTab(name){
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.getElementById(name).classList.add("active");
+  document.getElementById(name==="home"?"tabHome":"tabShop").classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function normalize(s){return s.trim().replace(/\s+/g," ").replace(/^./,c=>c.toUpperCase())}
+function addQuick(v,qty=1,quiet=false){
+  v=normalize(v); if(!v)return;
+  const found=shopping.find(x=>x.name.toLowerCase()===v.toLowerCase()&&!x.done);
+  if(found) found.qty=(found.qty||1)+qty;
+  else shopping.unshift({name:v,qty,done:false,counted:false});
+  save(); renderShopping();
+  if(!quiet) toast(v+" lagt til");
+}
+function addItem(){
+  const i=document.getElementById("itemInput");
+  addQuick(i.value); i.value="";
+}
+function categoryOf(name){
+  const n=name.toLowerCase();
+  for(const [cat,words] of Object.entries(categories)){
+    if(words.some(w=>n.includes(w))) return cat;
+  }
+  return "Annet";
+}
+function renderShopping(){
+  const root=document.getElementById("shoppingList");
+  root.innerHTML="";
+  const grouped={};
+  shopping.forEach((x,i)=>{
+    const c=categoryOf(x.name);
+    (grouped[c]||(grouped[c]=[])).push([x,i]);
+  });
+  ["Frukt & grønt","Kjøl","Kjøtt & fisk","Tørrvarer","Husholdning","Annet"].forEach(cat=>{
+    if(!grouped[cat])return;
+    const sec=document.createElement("div");
+    sec.className="category";
+    sec.innerHTML=`<h3>${cat}</h3>`;
+    grouped[cat].forEach(([x,i])=>{
+      const row=document.createElement("div");
+      row.className="item"+(x.done?" checked":"");
+      row.innerHTML=`<div class="check" onclick="toggleItem(${i})">${x.done?"✓":""}</div>
+      <div class="label">${x.qty>1?x.qty+" × ":""}${x.name}</div>
+      <button class="delete" onclick="removeItem(${i})">×</button>`;
+      sec.appendChild(row);
+    });
+    root.appendChild(sec);
+  });
+  const active=shopping.filter(x=>!x.done).length;
+  document.getElementById("count").textContent=active+" varer";
+  document.getElementById("tabCount").textContent=active?`(${active})`:"";
+  renderFrequent();
+}
+function toggleItem(i){
+  shopping[i].done=!shopping[i].done;
+  if(shopping[i].done&&!shopping[i].counted){
+    const k=shopping[i].name.toLowerCase();
+    purchases[k]=purchases[k]||{name:shopping[i].name,count:0};
+    purchases[k].count++;
+    shopping[i].counted=true;
+  }
+  save(); renderShopping();
+}
+function removeItem(i){shopping.splice(i,1);save();renderShopping()}
+function clearDone(){shopping=shopping.filter(x=>!x.done);save();renderShopping();toast("Handlede varer fjernet")}
+function renderFrequent(){
+  const box=document.getElementById("frequentBox");
+  const el=document.getElementById("learnedSuggestions");
+  const list=Object.values(purchases).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,12);
+  box.classList.toggle("hidden",list.length===0);
+  el.innerHTML=list.map(x=>`<button class="pill" style="border:0" onclick="addQuick('${x.name.replace(/'/g,"\\'")}')">+ ${x.name}</button>`).join("");
+}
+function addUseUp(){
+  const i=document.getElementById("useUpInput");
+  i.value.split(",").map(normalize).filter(Boolean).forEach(v=>{if(!useUp.includes(v))useUp.push(v)});
+  i.value="";save();renderUseUp();
+}
+function renderUseUp(){
+  const el=document.getElementById("useUpPills");
+  el.innerHTML=useUp.map((x,i)=>`<span class="pill">${x} <button onclick="removeUseUp(${i})" style="border:0;background:none;padding:0">×</button></span>`).join("");
+}
+function removeUseUp(i){useUp.splice(i,1);save();renderUseUp()}
+function scoreRecipe(r){
+  let s=Math.random();
+  useUp.forEach(u=>{if(r.items.some(it=>it.toLowerCase().includes(u.toLowerCase())))s+=4});
+  if(ratings[r.name]==="love")s+=4;
+  if(ratings[r.name]==="never")s-=100;
+  return s;
+}
+function pickWeek(){
+  const wantedKids=parseInt(document.getElementById("kidsDays").value,10);
+  const pool=recipes.filter(r=>r.source&&r.url&&ratings[r.name]!=="never");
+  const kids=pool.filter(r=>r.kids).sort((a,b)=>scoreRecipe(b)-scoreRecipe(a));
+  const adults=pool.filter(r=>!r.kids).sort((a,b)=>scoreRecipe(b)-scoreRecipe(a));
+  const chosen=[];
+  for(const r of kids){
+    if(chosen.length<4&&chosen.filter(x=>x.kids).length<wantedKids)chosen.push(r);
+  }
+  for(const r of adults){
+    if(chosen.length<4&&!chosen.includes(r))chosen.push(r);
+  }
+  for(const r of pool.sort((a,b)=>scoreRecipe(b)-scoreRecipe(a))){
+    if(chosen.length<4&&!chosen.includes(r))chosen.push(r);
+  }
+  return chosen.slice(0,4);
+}
+function recipeHTML(r){
+  return `<div class="meal-top">
+    <div><div class="meal-name">${r.name}</div><div class="source">${r.source} · ${r.time} · ${r.difficulty}</div></div>
+    <span class="tag">${r.tag}</span>
+  </div>
+  <div class="recipebox"><h4>Kort oppskrift</h4><ol>${r.steps.map(s=>`<li>${s}</li>`).join("")}</ol></div>
+  <div class="note"><b>Ingredienser:</b> ${r.items.join(" · ")}</div>
+  <div class="actions">
+    <button class="btn small" onclick='openHaveCheck(${JSON.stringify(r)})'>🛒 Legg til varer</button>
+    <button class="btn secondary small" onclick="window.open('${r.url}','_blank')">📖 Original hos ${r.source}</button>
+    <button class="btn ghost small" onclick='rateMeal(${JSON.stringify(r.name)},"love")'>❤️</button>
+    <button class="btn ghost small" onclick='rateMeal(${JSON.stringify(r.name)},"never")'>👎</button>
+  </div>`;
+}
+function makeWeek(){
+  const w=document.getElementById("week");
+  w.innerHTML=`<div class="pills"><span class="pill">🍕 Pizza</span><span class="pill">🌮 Taco</span><span class="pill">🥡 Rester</span></div>`;
+  pickWeek().forEach(r=>{
+    const d=document.createElement("div"); d.className="meal"; d.innerHTML=recipeHTML(r); w.appendChild(d);
+  });
+  toast("Ukeplan klar");
+}
+function dontThink(){
+  const opts=recipes.filter(r=>ratings[r.name]!=="never").sort((a,b)=>scoreRecipe(b)-scoreRecipe(a));
+  const r=opts[0];
+  const c=document.getElementById("suggestionCard");
+  c.classList.remove("hidden");
+  c.innerHTML=`<strong>Jeg foreslår:</strong><div class="meal">${recipeHTML(r)}</div>`;
+  c.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function showQuickMeals(){
+  const quick=recipes.filter(r=>r.quick&&ratings[r.name]!=="never").sort((a,b)=>scoreRecipe(b)-scoreRecipe(a)).slice(0,3);
+  const c=document.getElementById("suggestionCard");
+  c.classList.remove("hidden");
+  c.innerHTML=`<strong>⚡ Kjappe middager</strong><div class="note">Tre faktiske oppskrifter med kilde.</div>`+
+    quick.map(r=>`<div class="meal">${recipeHTML(r)}</div>`).join("");
+  c.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function rateMeal(name,rating){ratings[name]=rating;save();renderMealHistory();toast(rating==="love"?"Lagret som favoritt":"Skjules fra forslag")}
+function renderMealHistory(){
+  const entries=Object.entries(ratings);
+  document.getElementById("mealHistory").innerHTML=entries.length?entries.map(([n,r])=>`<span class="pill">${r==="love"?"❤️":"👎"} ${n}</span>`).join(" "):"Ingen middager vurdert ennå.";
+}
+function openHaveCheck(r){
+  pendingRecipe=r;
+  document.getElementById("haveList").innerHTML=r.items.map(x=>`<label class="homecheck"><input type="checkbox" data-item="${x.replace(/"/g,"&quot;")}"><span>${x}</span></label>`).join("");
+  document.getElementById("haveModal").classList.add("show");
+}
+function closeModal(){document.getElementById("haveModal").classList.remove("show");pendingRecipe=null}
+function confirmRecipeAdd(){
+  if(!pendingRecipe)return;
+  document.querySelectorAll("#haveList input").forEach(cb=>{if(!cb.checked)addQuick(cb.dataset.item,1,true)});
+  closeModal();toast("Det du mangler er lagt til");
+}
+function parseSpeech(text){
+  return text.replace(/\bog så\b/gi,",").replace(/\bsamt\b/gi,",").replace(/\bog\b/gi,",").split(",").map(x=>x.trim()).filter(Boolean);
+}
+async function toggleVoice(){
+  const btn=document.getElementById("voiceBtn");
+  const help=document.getElementById("voiceHelp");
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  if(voiceListening){
+    voiceListening=false;
+    if(voiceRecognition){try{voiceRecognition.stop()}catch(e){}}
+    btn.textContent="🎤";
+    help.textContent="Stoppet. Trykk 🎤 når du vil legge til flere.";
+    return;
+  }
+  if(!SR){
+    help.textContent="Denne nettleseren støtter ikke direkte tale. Bruk mikrofonen på mobilens tastatur.";
+    document.getElementById("itemInput").focus();
+    return;
+  }
+  try{
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t=>t.stop());
+    }
+  }catch(e){
+    help.textContent="Mikrofontilgang er blokkert.";
+    return;
+  }
+
+  voiceListening=true;btn.textContent="⏹";help.textContent="Lytter … si flere varer. Trykk ⏹ når du er ferdig.";
+
+  const start=()=>{
+    if(!voiceListening)return;
+    const r=new SR(); voiceRecognition=r; r.lang="nb-NO"; r.continuous=true; r.interimResults=false;
+    r.onresult=e=>{
+      const added=[];
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal){
+          parseSpeech(e.results[i][0].transcript).forEach(x=>{addQuick(x,1,true);added.push(x)});
+        }
+      }
+      if(added.length)help.textContent="La til: "+added.join(", ")+". Fortsett å snakke eller trykk ⏹.";
+    };
+    r.onend=()=>{if(voiceListening)setTimeout(start,250);else btn.textContent="🎤"};
+    r.onerror=e=>{if(e.error==="not-allowed"){voiceListening=false;btn.textContent="🎤";help.textContent="Mikrofontilgang ble blokkert."}};
+    try{r.start()}catch(e){if(voiceListening)setTimeout(start,500)}
+  };
+  start();
+}
+function toast(msg){
+  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),1500);
+}
+
+renderShopping();
+renderUseUp();
+renderMealHistory();
+</script>
+</body>
+</html>

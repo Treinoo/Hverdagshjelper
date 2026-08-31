@@ -90,8 +90,8 @@
 <section id="shop" class="panel">
 <div class="shopping-head"><div><div class="note">Sortert etter avdeling</div><div class="shopping-count" id="count">0 varer</div></div><button class="btn ghost small" onclick="clearDone()">Fjern handlet</button></div>
 <div class="card">
-<div class="input-row"><input id="itemInput" placeholder="Skriv vare…" onkeydown="if(event.key==='Enter')addItem()"/><button class="btn secondary voice" onclick="startVoice()">🎤</button><button class="btn small" onclick="addItem()">+</button></div>
-<div id="voiceHelp" class="mic-help note">På mobil: trykk i feltet og bruk mikrofonen på tastaturet hvis 🎤-knappen ikke virker.</div>
+<div class="input-row"><input id="itemInput" placeholder="Skriv vare…" onkeydown="if(event.key==='Enter')addItem()"/><button id="voiceBtn" class="btn secondary voice" onclick="toggleVoice()">🎤</button><button class="btn small" onclick="addItem()">+</button></div>
+<div id="voiceHelp" class="mic-help note">Trykk 🎤 én gang og si flere varer. Trykk ⏹ når du er ferdig.</div>
 <div id="shoppingList"></div>
 </div>
 </section>
@@ -199,7 +199,115 @@ function openHaveCheck(r){pendingRecipe=r;const list=document.getElementById("ha
 function closeModal(){document.getElementById("haveModal").classList.remove("show");pendingRecipe=null}
 function confirmRecipeAdd(){if(!pendingRecipe)return;document.querySelectorAll("#haveList input").forEach(cb=>{if(!cb.checked)addQuick(cb.dataset.item,1,true)});closeModal();toast("Det du mangler er lagt til")}
 function renderAllPills(){renderPills("staples",staples,"addQuick");renderPills("household",household,"addQuick")}
-async function startVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,help=document.getElementById("voiceHelp");if(!SR){help.innerHTML="Denne nettleseren har ikke innebygd tale-til-tekst. Bruk mikrofonen på mobilens tastatur i skrivefeltet.";document.getElementById("itemInput").focus();return}if(location.protocol==="file:"){help.innerHTML="Denne lokale filen kan blokkere mikrofon. Åpne den publiserte HTTPS-versjonen i stedet.";document.getElementById("itemInput").focus();return}if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop())}catch(e){help.innerHTML="Mikrofontilgang er blokkert. Tillat mikrofon for denne siden i nettleserinnstillingene.";return}}const r=new SR();r.lang="nb-NO";r.onresult=e=>{let t=e.results[0][0].transcript;t.split(/,| og | samt /i).map(x=>x.trim()).filter(Boolean).forEach(x=>addQuick(x,1,true));save();renderShopping();help.textContent=`Jeg hørte: «${t}»`};r.start()}
+let voiceRecognition = null;
+let voiceListening = false;
+
+function splitSpokenItems(text){
+  return text
+    .replace(/og så/gi, ",")
+    .replace(/også/gi, ",")
+    .replace(/samt/gi, ",")
+    .replace(/og/gi, ",")
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+}
+
+async function toggleVoice(){
+  const help = document.getElementById("voiceHelp");
+  const btn = document.getElementById("voiceBtn");
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if(voiceListening){
+    voiceListening = false;
+    if(voiceRecognition){
+      try{ voiceRecognition.stop(); }catch(e){}
+    }
+    btn.textContent = "🎤";
+    help.textContent = "Stoppet. Trykk 🎤 når du vil legge til flere varer.";
+    return;
+  }
+
+  if(!SR){
+    help.innerHTML = "Denne nettleseren har ikke innebygd tale-til-tekst. Bruk mikrofonen på mobilens tastatur.";
+    document.getElementById("itemInput").focus();
+    return;
+  }
+
+  if(location.protocol === "file:"){
+    help.innerHTML = "Åpne den publiserte HTTPS-versjonen for å bruke mikrofonen.";
+    return;
+  }
+
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t => t.stop());
+    }catch(e){
+      help.innerHTML = "Mikrofontilgang er blokkert. Tillat mikrofon for Matvenn i nettleseren.";
+      return;
+    }
+  }
+
+  voiceListening = true;
+  btn.textContent = "⏹";
+  help.textContent = "Lytter… si flere varer etter hverandre. Du kan ta små pauser.";
+
+  const startRecognition = () => {
+    if(!voiceListening) return;
+
+    const r = new SR();
+    voiceRecognition = r;
+    r.lang = "nb-NO";
+    r.interimResults = false;
+    r.continuous = true;
+    r.maxAlternatives = 1;
+
+    r.onresult = e => {
+      let fullText = "";
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        if(e.results[i].isFinal){
+          fullText += " " + e.results[i][0].transcript;
+        }
+      }
+      fullText = fullText.trim();
+      if(!fullText) return;
+
+      const parts = splitSpokenItems(fullText);
+      parts.forEach(x => addQuick(x, 1, true));
+      save();
+      renderShopping();
+      help.textContent = `La til: ${parts.join(", ")}. Fortsett å snakke, eller trykk ⏹ når du er ferdig.`;
+    };
+
+    r.onerror = e => {
+      if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+        voiceListening = false;
+        btn.textContent = "🎤";
+        help.textContent = "Mikrofontilgang ble blokkert.";
+        return;
+      }
+    };
+
+    r.onend = () => {
+      if(voiceListening){
+        // Some mobile browsers stop listening after a pause.
+        // Restart automatically so the user does not have to press the mic again.
+        setTimeout(startRecognition, 250);
+      }else{
+        btn.textContent = "🎤";
+      }
+    };
+
+    try{ r.start(); }
+    catch(e){
+      setTimeout(startRecognition, 500);
+    }
+  };
+
+  startRecognition();
+}
+
 function renderWednesday(){if(new Date().getDay()===3)document.getElementById("wedBanner").classList.remove("hidden")}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>t.classList.remove("show"),1600)}
 renderShopping();renderAllPills();renderLearned();renderUseUp();renderKids();renderMealHistory();renderWednesday();
